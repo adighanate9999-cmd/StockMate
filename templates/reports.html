@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}Reports & Analytics - Smart Stock{% endblock %}
+{% block header_title %}Reports &amp; Business Intelligence{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- 1. Range Filter & Export Actions Toolbar -->
+    <div class="saas-card p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        <!-- Date Range Filter Tabs -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            <span class="text-xs font-semibold text-slate-500 mr-1 uppercase">Period:</span>
+            <a href="{{ url_for('reports_view', period='today') }}" class="px-3 py-1.5 rounded-lg font-medium transition-colors {% if period == 'today' %}bg-navy-900 text-white font-semibold{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
+                Today
+            </a>
+            <a href="{{ url_for('reports_view', period='last7') }}" class="px-3 py-1.5 rounded-lg font-medium transition-colors {% if period == 'last7' %}bg-navy-900 text-white font-semibold{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
+                Last 7 Days
+            </a>
+            <a href="{{ url_for('reports_view', period='month') }}" class="px-3 py-1.5 rounded-lg font-medium transition-colors {% if period == 'month' %}bg-navy-900 text-white font-semibold{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
+                This Month
+            </a>
+            <a href="{{ url_for('reports_view', period='all') }}" class="px-3 py-1.5 rounded-lg font-medium transition-colors {% if period == 'all' %}bg-navy-900 text-white font-semibold{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
+                All Time
+            </a>
+        </div>
+
+        <!-- Download CSV Action Dropdown / Buttons -->
+        <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-xs text-slate-400 font-medium">Export Data:</span>
+            <a href="{{ url_for('export_sales_csv') }}" class="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-semibold flex items-center gap-1 shadow-xs transition-colors">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Sales CSV</span>
+            </a>
+            <a href="{{ url_for('export_expenses_csv') }}" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1 shadow-xs transition-colors">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Expenses CSV</span>
+            </a>
+            <a href="{{ url_for('export_inventory_csv') }}" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1 shadow-xs transition-colors">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Inventory CSV</span>
+            </a>
+            <a href="{{ url_for('export_customers_csv') }}" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1 shadow-xs transition-colors">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Khata CSV</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- 2. Profit & Loss (P&L) Executive Statement Card -->
+    <div class="saas-card p-6 bg-white border border-slate-200/90 shadow-sm">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-slate-100 gap-2">
+            <div>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Financial Statement</span>
+                <h3 class="text-base font-bold text-slate-900 font-heading">Profit &amp; Loss Performance Summary ({{ period_label }})</h3>
+            </div>
+            <div class="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+                Currency: Indian Rupee (₹)
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mt-4">
+            <!-- Gross Revenue -->
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+                <span class="text-slate-500 text-xs font-medium block">1. Gross Revenue (Sales)</span>
+                <div class="text-xl font-extrabold text-slate-900 font-heading mt-1">₹{{ "{:,.2f}".format(pnl.gross_sales) }}</div>
+                <div class="text-[11px] text-slate-500 mt-1">{{ pnl.order_count }} invoices billed</div>
+            </div>
+
+            <!-- Cost of Goods Sold -->
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+                <span class="text-slate-500 text-xs font-medium block">2. Cost of Goods Sold</span>
+                <div class="text-xl font-bold text-slate-700 font-heading mt-1">₹{{ "{:,.2f}".format(pnl.cost_of_goods) }}</div>
+                <div class="text-[11px] text-slate-500 mt-1">Wholesale purchase cost</div>
+            </div>
+
+            <!-- Gross Profit -->
+            <div class="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200">
+                <span class="text-emerald-800 text-xs font-semibold block">3. Gross Profit (1 - 2)</span>
+                <div class="text-xl font-extrabold text-emerald-800 font-heading mt-1">₹{{ "{:,.2f}".format(pnl.gross_profit) }}</div>
+                <div class="text-[11px] text-emerald-700 font-semibold mt-1">{{ "{:.1f}%".format(pnl.gross_margin_pct) }} gross margin</div>
+            </div>
+
+            <!-- Total Operating Expenses -->
+            <div class="p-4 rounded-xl bg-rose-50/50 border border-rose-200/70">
+                <span class="text-rose-800 text-xs font-semibold block">4. Operating Expenses</span>
+                <div class="text-xl font-bold text-rose-800 font-heading mt-1">₹{{ "{:,.2f}".format(pnl.operating_expenses) }}</div>
+                <div class="text-[11px] text-rose-700 mt-1">Rent, electricity, wages, tea</div>
+            </div>
+
+            <!-- Net Business Profit -->
+            <div class="p-4 rounded-xl {% if pnl.net_profit >= 0 %}bg-emerald-600 text-white{% else %}bg-rose-600 text-white{% endif %} shadow-md">
+                <span class="text-emerald-100 text-xs font-semibold block">5. Net Profit (3 - 4)</span>
+                <div class="text-2xl font-extrabold text-white font-heading mt-1">₹{{ "{:,.2f}".format(pnl.net_profit) }}</div>
+                <div class="text-[11px] text-emerald-100 mt-1 font-medium">{{ "{:.1f}%".format(pnl.net_margin_pct) }} net margin</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Interactive Charts Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Sales & Profit Progression Chart -->
+        <div class="saas-card p-5">
+            <h3 class="text-sm font-bold text-slate-800 font-heading mb-1">Sales &amp; Profit Trend ({{ period_label }})</h3>
+            <p class="text-xs text-slate-500 mb-4">Daily revenue progression with profit margins</p>
+            <div class="h-64">
+                <canvas id="reportsTrendCanvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Payment Method Distribution & Breakdown -->
+        <div class="saas-card p-5 flex flex-col justify-between">
+            <div>
+                <h3 class="text-sm font-bold text-slate-800 font-heading mb-1">Payment Modes Breakdown</h3>
+                <p class="text-xs text-slate-500 mb-4">Proportion of Cash vs UPI/Online vs Khata credit sales</p>
+                <div class="h-56 relative flex items-center justify-center">
+                    <canvas id="paymentMethodsCanvas"></canvas>
+                </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 grid grid-cols-3 gap-2 text-center text-xs">
+                <div class="p-2 rounded-lg bg-blue-50 text-blue-800 font-semibold">Cash: ₹{{ "{:,.0f}".format(pnl.cash_sales) }}</div>
+                <div class="p-2 rounded-lg bg-emerald-50 text-emerald-800 font-semibold">UPI: ₹{{ "{:,.0f}".format(pnl.upi_sales) }}</div>
+                <div class="p-2 rounded-lg bg-amber-50 text-amber-800 font-semibold">Credit: ₹{{ "{:,.0f}".format(pnl.credit_sales) }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Detailed Stock Valuation Report -->
+    <div class="saas-card p-5 space-y-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="text-sm font-bold text-slate-800 font-heading">Stock Valuation by Category</h3>
+                <p class="text-xs text-slate-500">Inventory investment, retail capital, and projected gross profit margin</p>
+            </div>
+            <a href="{{ url_for('export_inventory_csv') }}" class="text-xs text-emerald-700 font-semibold hover:underline flex items-center gap-1">
+                <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
+                <span>Download Valuation CSV</span>
+            </a>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] tracking-wider font-semibold">
+                    <tr>
+                        <th class="py-3 px-4">Category</th>
+                        <th class="py-3 px-4 text-center">SKU Count</th>
+                        <th class="py-3 px-4 text-center">Total Units in Stock</th>
+                        <th class="py-3 px-4 text-right">Total Cost Value (₹)</th>
+                        <th class="py-3 px-4 text-right">Total Retail Value (₹)</th>
+                        <th class="py-3 px-4 text-right">Projected Profit (₹)</th>
+                        <th class="py-3 px-4 text-center">Avg Margin %</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700">
+                    {% for cat in category_valuation %}
+                    {% set pot_profit = cat.retail_val - cat.cost_val %}
+                    {% set margin = (pot_profit / cat.retail_val * 100) if cat.retail_val > 0 else 0 %}
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="py-3 px-4 font-semibold text-slate-900">{{ cat.category_name }}</td>
+                        <td class="py-3 px-4 text-center text-slate-600 font-medium">{{ cat.sku_count }}</td>
+                        <td class="py-3 px-4 text-center font-bold text-slate-800">{{ "{:,.0f}".format(cat.total_qty) }}</td>
+                        <td class="py-3 px-4 text-right font-medium">₹{{ "{:,.2f}".format(cat.cost_val) }}</td>
+                        <td class="py-3 px-4 text-right font-semibold text-slate-900">₹{{ "{:,.2f}".format(cat.retail_val) }}</td>
+                        <td class="py-3 px-4 text-right font-bold text-emerald-700">₹{{ "{:,.2f}".format(pot_profit) }}</td>
+                        <td class="py-3 px-4 text-center font-semibold text-emerald-700">{{ "{:.1f}%".format(margin) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 5. Best-Selling Products Leaderboard -->
+    <div class="saas-card p-5 space-y-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="text-sm font-bold text-slate-800 font-heading">Top 10 Best-Selling Products</h3>
+                <p class="text-xs text-slate-500">Ranked by sales volume and total revenue generated</p>
+            </div>
+            <span class="text-xs text-slate-400">High Velocity Items</span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] tracking-wider font-semibold">
+                    <tr>
+                        <th class="py-3 px-4 text-center">Rank</th>
+                        <th class="py-3 px-4">Product Name</th>
+                        <th class="py-3 px-4 text-center">Units Sold</th>
+                        <th class="py-3 px-4 text-right">Gross Sales Revenue</th>
+                        <th class="py-3 px-4 text-right">Net Profit Contribution</th>
+                        <th class="py-3 px-4 text-center">Profitability</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700">
+                    {% for p in top_products %}
+                    {% set p_margin = (p.total_profit / p.total_revenue * 100) if p.total_revenue > 0 else 0 %}
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="py-3 px-4 text-center">
+                            <span class="w-6 h-6 rounded-full inline-flex items-center justify-center font-bold text-[11px] {% if loop.index == 1 %}bg-amber-100 text-amber-800 border border-amber-300{% elif loop.index == 2 %}bg-slate-200 text-slate-700{% elif loop.index == 3 %}bg-amber-50 text-amber-900{% else %}bg-slate-100 text-slate-600{% endif %}">
+                                #{{ loop.index }}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 font-semibold text-slate-900">{{ p.product_name }}</td>
+                        <td class="py-3 px-4 text-center font-bold text-slate-800">{{ p.total_qty }} {{ p.unit }}</td>
+                        <td class="py-3 px-4 text-right font-medium">₹{{ "{:,.2f}".format(p.total_revenue) }}</td>
+                        <td class="py-3 px-4 text-right font-bold text-emerald-700">₹{{ "{:,.2f}".format(p.total_profit) }}</td>
+                        <td class="py-3 px-4 text-center">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                {{ "{:.1f}%".format(p_margin) }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Trend Chart
+        const trendData = {{ reports_trend|tojson }};
+        initDashboardTrendChart('reportsTrendCanvas', trendData);
+
+        // Payment Methods Pie Chart
+        const pmCtx = document.getElementById('paymentMethodsCanvas')?.getContext('2d');
+        if (pmCtx) {
+            new Chart(pmCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Cash', 'UPI / QR', 'Credit (Khata)'],
+                    datasets: [{
+                        data: [{{ pnl.cash_sales }}, {{ pnl.upi_sales }}, {{ pnl.credit_sales }}],
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.label}: ₹${Number(context.raw).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

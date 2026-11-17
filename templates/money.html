@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}Money & Expenses - Smart Stock{% endblock %}
+{% block header_title %}Money Management &amp; Financial Register{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- 1. Master Formula Card: Cash In Hand Breakdown -->
+    <div class="saas-card p-6 bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800 text-white relative overflow-hidden shadow-lg">
+        <div class="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Live Cash Register</span>
+                    <span class="text-xs text-slate-400">&bull; Today's Drawer Float Reconciliation</span>
+                </div>
+                <div class="text-3xl sm:text-4xl font-extrabold text-white font-heading mt-1">
+                    ₹{{ "{:,.2f}".format(fin.cash_in_hand) }}
+                </div>
+                <div class="text-xs text-emerald-300 font-medium mt-1">
+                    Actual physical cash balance that must match your physical cash drawer right now.
+                </div>
+            </div>
+
+            <!-- Set Opening Cash CTA -->
+            <button type="button" onclick="openModal('opening-cash-modal')" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 text-xs font-semibold shadow-xs transition-colors flex items-center gap-2 shrink-0">
+                <i data-lucide="edit-3" class="w-4 h-4 text-emerald-400"></i>
+                <span>Set Morning Opening Cash (Float)</span>
+            </button>
+        </div>
+
+        <!-- Formula Visual Step Breakdown -->
+        <div class="mt-6 pt-5 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+            <div class="bg-slate-800/40 p-3 rounded-xl border border-slate-700/60">
+                <span class="text-slate-400 block text-[11px]">1. Opening Cash</span>
+                <span class="text-base font-bold text-white mt-0.5 block">₹{{ "{:,.2f}".format(fin.opening_cash) }}</span>
+                <span class="text-[10px] text-slate-400">Morning drawer base</span>
+            </div>
+
+            <div class="bg-slate-800/40 p-3 rounded-xl border border-slate-700/60">
+                <span class="text-emerald-400 block text-[11px] font-semibold">+ 2. Cash Sales Today</span>
+                <span class="text-base font-bold text-emerald-400 mt-0.5 block">₹{{ "{:,.2f}".format(fin.today_cash_sales) }}</span>
+                <span class="text-[10px] text-slate-400">From counter billing</span>
+            </div>
+
+            <div class="bg-slate-800/40 p-3 rounded-xl border border-slate-700/60">
+                <span class="text-blue-400 block text-[11px] font-semibold">+ 3. Credit Repaid Today</span>
+                <span class="text-base font-bold text-blue-400 mt-0.5 block">₹{{ "{:,.2f}".format(fin.today_cash_repayments) }}</span>
+                <span class="text-[10px] text-slate-400">Khata paid in cash</span>
+            </div>
+
+            <div class="bg-slate-800/40 p-3 rounded-xl border border-slate-700/60">
+                <span class="text-rose-400 block text-[11px] font-semibold">- 4. Cash Expenses Today</span>
+                <span class="text-base font-bold text-rose-400 mt-0.5 block">₹{{ "{:,.2f}".format(fin.today_cash_expenses) }}</span>
+                <span class="text-[10px] text-slate-400">Paid out from drawer</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Expenses Management & Breakdown Chart -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Left: Expense Records Table (2 cols) -->
+        <div class="lg:col-span-2 saas-card p-5 space-y-4">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-800 font-heading">Business Operating Expenses</h3>
+                    <p class="text-xs text-slate-500">Track rent, electricity, wages, tea, transport, and daily operational overheads</p>
+                </div>
+                <button type="button" onclick="openModal('add-expense-modal')" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition-colors flex items-center gap-1.5 shrink-0">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    <span>Record Expense</span>
+                </button>
+            </div>
+
+            <!-- Table of Expenses -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] tracking-wider font-semibold">
+                        <tr>
+                            <th class="py-2.5 px-4">Date</th>
+                            <th class="py-2.5 px-4">Expense Title</th>
+                            <th class="py-2.5 px-4">Category</th>
+                            <th class="py-2.5 px-4 text-center">Paid Via</th>
+                            <th class="py-2.5 px-4 text-right">Amount (₹)</th>
+                            <th class="py-2.5 px-4">Ref / Note</th>
+                            <th class="py-2.5 px-4 text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-slate-700">
+                        {% for exp in expenses %}
+                        <tr class="hover:bg-slate-50/80 transition-colors">
+                            <td class="py-2.5 px-4 font-mono text-[11px] text-slate-500">{{ exp.expense_date }}</td>
+                            <td class="py-2.5 px-4 font-semibold text-slate-900">{{ exp.title }}</td>
+                            <td class="py-2.5 px-4">
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700">
+                                    {{ exp.category }}
+                                </span>
+                            </td>
+                            <td class="py-2.5 px-4 text-center">
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold {% if exp.payment_method == 'Cash' %}bg-amber-50 text-amber-800 border border-amber-200{% elif exp.payment_method == 'UPI' %}bg-emerald-50 text-emerald-700 border border-emerald-200{% else %}bg-blue-50 text-blue-700 border border-blue-200{% endif %}">
+                                    {{ exp.payment_method }}
+                                </span>
+                            </td>
+                            <td class="py-2.5 px-4 text-right font-bold text-slate-900">₹{{ "{:,.2f}".format(exp.amount) }}</td>
+                            <td class="py-2.5 px-4 text-slate-500 text-[11px] truncate max-w-[130px]" title="{{ exp.notes }}">
+                                {{ exp.receipt_ref or exp.notes or '--' }}
+                            </td>
+                            <td class="py-2.5 px-4 text-center">
+                                <form method="POST" action="{{ url_for('delete_expense', id=exp.id) }}" onsubmit="return confirm('Delete this expense entry?');">
+                                    <button type="submit" class="p-1 text-slate-400 hover:text-rose-600 transition-colors" title="Delete">
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="py-6 text-center text-slate-400">No expenses recorded yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Right: Expense Category Breakdown Chart (1 col) -->
+        <div class="saas-card p-5 flex flex-col justify-between">
+            <div>
+                <h3 class="text-sm font-bold text-slate-800 font-heading">Expense Breakdown</h3>
+                <p class="text-xs text-slate-500 mb-4">Total spent: <span class="font-bold text-slate-800">₹{{ "{:,.2f}".format(total_expenses_all) }}</span></p>
+                <div class="h-56 relative flex items-center justify-center">
+                    <canvas id="expenseCategoryCanvas"></canvas>
+                </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                <span class="font-semibold text-slate-700">Tip:</span> Cash expenses directly deduct from your Cash In Hand balance.
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 3. Unified Cash Movement Ledger -->
+    <div class="saas-card p-5 space-y-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="text-sm font-bold text-slate-800 font-heading">Cash Movement Ledger</h3>
+                <p class="text-xs text-slate-500">Chronological history of all physical cash inflow and outflow transactions</p>
+            </div>
+            <span class="text-xs text-slate-400">Cash Flow History</span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] tracking-wider font-semibold">
+                    <tr>
+                        <th class="py-2.5 px-4">Date &amp; Time</th>
+                        <th class="py-2.5 px-4">Transaction Details</th>
+                        <th class="py-2.5 px-4 text-center">Type</th>
+                        <th class="py-2.5 px-4 text-right">Inflow (+)</th>
+                        <th class="py-2.5 px-4 text-right">Outflow (-)</th>
+                        <th class="py-2.5 px-4">Reference</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700">
+                    {% for item in cash_ledger %}
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="py-2.5 px-4 font-mono text-[11px] text-slate-500">{{ item.date_str }}</td>
+                        <td class="py-2.5 px-4 font-semibold text-slate-900">{{ item.description }}</td>
+                        <td class="py-2.5 px-4 text-center">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold {% if item.flow == 'IN' %}bg-emerald-50 text-emerald-700 border border-emerald-200{% else %}bg-rose-50 text-rose-700 border border-rose-200{% endif %}">
+                                {{ item.flow }}FLOW
+                            </span>
+                        </td>
+                        <td class="py-2.5 px-4 text-right font-bold text-emerald-700">
+                            {% if item.flow == 'IN' %}₹{{ "{:,.2f}".format(item.amount) }}{% else %}--{% endif %}
+                        </td>
+                        <td class="py-2.5 px-4 text-right font-bold text-rose-700">
+                            {% if item.flow == 'OUT' %}₹{{ "{:,.2f}".format(item.amount) }}{% else %}--{% endif %}
+                        </td>
+                        <td class="py-2.5 px-4 font-mono text-slate-500 text-[11px]">{{ item.reference or '--' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="py-6 text-center text-slate-400">No cash movements recorded.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal: Record New Expense -->
+<div id="add-expense-modal" data-modal class="fixed inset-0 modal-backdrop-custom z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">
+        <div class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+            <h3 class="text-sm font-bold flex items-center gap-2">
+                <i data-lucide="receipt" class="w-4 h-4 text-emerald-400"></i>
+                Record Business Expense
+            </h3>
+            <button onclick="closeModal('add-expense-modal')" class="text-slate-400 hover:text-white p-1">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+
+        <form method="POST" action="{{ url_for('add_expense') }}" class="p-5 space-y-3.5">
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Expense Title *</label>
+                <input type="text" name="title" required placeholder="e.g. Shop Electricity Bill, Staff Lunch, Tempo Fare" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Category *</label>
+                    <select name="category" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                        <option value="Rent">Shop Rent</option>
+                        <option value="Utilities">Electricity / Water / Internet</option>
+                        <option value="Salaries">Staff / Helper Wages</option>
+                        <option value="Transportation">Transport / Freight Tempo</option>
+                        <option value="Tea & Refreshments">Tea &amp; Snacks</option>
+                        <option value="Packaging">Packaging Bags &amp; Rolls</option>
+                        <option value="Maintenance">Store Cleaning &amp; Repairs</option>
+                        <option value="Miscellaneous">Miscellaneous</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Amount (₹) *</label>
+                    <input type="number" step="0.5" min="1" name="amount" required placeholder="0.00" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none font-bold">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Paid Via *</label>
+                    <select name="payment_method" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                        <option value="Cash">Cash Drawer</option>
+                        <option value="UPI">UPI / GPay</option>
+                        <option value="Bank">Bank Transfer</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Expense Date *</label>
+                    <input type="date" name="expense_date" required value="{{ today_str }}" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none font-medium">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Bill / Voucher Reference (Optional)</label>
+                <input type="text" name="receipt_ref" placeholder="e.g. Torrent Bill #4872" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Notes / Description</label>
+                <input type="text" name="notes" placeholder="Optional notes" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button type="button" onclick="closeModal('add-expense-modal')" class="py-2 px-3 text-xs rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100">Cancel</button>
+                <button type="submit" class="py-2 px-4 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs">Save Expense</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Set Morning Opening Cash -->
+<div id="opening-cash-modal" data-modal class="fixed inset-0 modal-backdrop-custom z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl border border-slate-200 overflow-hidden">
+        <div class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+            <h3 class="text-sm font-bold flex items-center gap-2">
+                <i data-lucide="wallet" class="w-4 h-4 text-emerald-400"></i>
+                Set Today's Opening Float
+            </h3>
+            <button onclick="closeModal('opening-cash-modal')" class="text-slate-400 hover:text-white p-1">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+
+        <form method="POST" action="{{ url_for('set_opening_cash') }}" class="p-5 space-y-3.5">
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Opening Cash Amount (₹) *</label>
+                <input type="number" step="10" min="0" name="opening_cash" value="{{ fin.opening_cash }}" required class="w-full px-3 py-2 text-base border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none font-bold text-emerald-800">
+                <p class="text-[11px] text-slate-400 mt-1">Starting currency notes &amp; coins in drawer this morning</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Notes</label>
+                <input type="text" name="notes" placeholder="e.g. Change coins + ₹500 notes" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+            </div>
+
+            <div class="pt-2 flex items-center justify-end gap-2">
+                <button type="button" onclick="closeModal('opening-cash-modal')" class="py-2 px-3 text-xs rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100">Cancel</button>
+                <button type="submit" class="py-2 px-4 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs">Update Drawer Float</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const expenseCategoryData = {{ expense_categories|tojson }};
+        initCategoryDonutChart('expenseCategoryCanvas', expenseCategoryData);
+    });
+</script>
+{% endblock %}

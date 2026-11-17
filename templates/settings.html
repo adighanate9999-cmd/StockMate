@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Store Settings - Smart Stock{% endblock %}
+{% block header_title %}Store Profile &amp; System Configuration{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-4xl">
+
+    <!-- Store Profile Card -->
+    <div class="saas-card p-6 bg-white border border-slate-200/90 shadow-sm">
+        <div class="flex items-center gap-3 pb-4 border-b border-slate-100 mb-6">
+            <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <i data-lucide="store" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <h3 class="text-base font-bold text-slate-800 font-heading">Shop Profile &amp; Bill Receipt Branding</h3>
+                <p class="text-xs text-slate-500">These details appear at the top of your thermal customer receipts and invoices</p>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('settings_view') }}" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Store / Shop Name *</label>
+                    <input type="text" name="shop_name" value="{{ shop.shop_name }}" required 
+                           class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none font-semibold text-slate-900">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Tagline *</label>
+                    <input type="text" name="shop_tagline" value="{{ shop.shop_tagline }}" required 
+                           class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Owner Name *</label>
+                    <input type="text" name="owner_name" value="{{ shop.owner_name }}" required 
+                           class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Mobile / WhatsApp Number *</label>
+                    <input type="text" name="phone" value="{{ shop.phone }}" required 
+                           class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">GSTIN / Registration Number</label>
+                    <input type="text" name="gstin" value="{{ shop.gstin or '' }}" placeholder="e.g. 24AAACP1234M1Z5" 
+                           class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none font-mono">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Currency Symbol</label>
+                    <input type="text" name="currency_symbol" value="{{ shop.currency_symbol or '₹' }}" readonly 
+                           class="w-full px-3 py-2 text-xs border border-slate-200 bg-slate-100 rounded-xl text-slate-500 font-bold">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Shop Address</label>
+                <input type="text" name="address" value="{{ shop.address or '' }}" required 
+                       class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+            </div>
+
+            <div class="pt-4 border-t border-slate-100 flex justify-end">
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-2">
+                    <i data-lucide="save" class="w-4 h-4"></i>
+                    <span>Save Store Settings</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Engineering Project & Data Management Card -->
+    <div class="saas-card p-6 bg-white border border-slate-200/90 shadow-sm">
+        <div class="flex items-center gap-3 pb-4 border-b border-slate-100 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <i data-lucide="database" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <h3 class="text-base font-bold text-slate-800 font-heading">Project Demo &amp; Database Administration</h3>
+                <p class="text-xs text-slate-500">Suitable for college presentations, evaluations, and mock store testing</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs mb-6">
+            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Database Engine</span>
+                <span class="font-bold text-slate-800 mt-0.5 block">SQLite 3 (MySQL Ready)</span>
+            </div>
+            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Backend Framework</span>
+                <span class="font-bold text-slate-800 mt-0.5 block">Python Flask 3.1 &amp; Jinja2</span>
+            </div>
+            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Frontend Architecture</span>
+                <span class="font-bold text-slate-800 mt-0.5 block">HTML5, Tailwind, Chart.js 4</span>
+            </div>
+        </div>
+
+        <!-- Demonstration Reset Actions -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-amber-50/70 border border-amber-200 rounded-xl gap-3">
+            <div>
+                <div class="font-bold text-xs text-amber-900">Reset &amp; Reload Realistic Indian Retail Data</div>
+                <div class="text-[11px] text-amber-700 mt-0.5">
+                    Re-seeds 26 grocery products, 5 customers, 14 days of realistic sales, expenses, and cash drawer records.
+                </div>
+            </div>
+            <form method="POST" action="{{ url_for('reseed_data_route') }}" onsubmit="return confirm('Re-seed realistic sample data? All test records will be refreshed.');">
+                <button type="submit" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs transition-colors shrink-0 flex items-center gap-1.5">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    <span>Re-Seed Sample Data</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

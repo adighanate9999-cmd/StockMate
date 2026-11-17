@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+
+{% block title %}Stock & Inventory - Smart Stock{% endblock %}
+{% block header_title %}Dedicated Stock & Inventory Management{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- 1. Inventory Status Summary Cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="saas-card p-4 flex items-center justify-between">
+            <div>
+                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total SKUs in Catalog</span>
+                <div class="text-2xl font-bold text-slate-900 font-heading mt-1">{{ total_skus }}</div>
+                <div class="text-[11px] text-slate-500 mt-1">{{ "{:,.0f}".format(total_units) }} total stock units</div>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <i data-lucide="archive" class="w-5 h-5"></i>
+            </div>
+        </div>
+
+        <div class="saas-card p-4 flex items-center justify-between border-l-4 border-l-emerald-500">
+            <div>
+                <span class="text-xs font-semibold text-emerald-800 uppercase tracking-wider">Healthy Stock (Available)</span>
+                <div class="text-2xl font-bold text-emerald-800 font-heading mt-1">{{ in_stock_count }} <span class="text-xs font-normal text-slate-500">SKUs</span></div>
+                <div class="text-[11px] text-emerald-700 mt-1">Above minimum threshold</div>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <i data-lucide="check-circle" class="w-5 h-5"></i>
+            </div>
+        </div>
+
+        <div class="saas-card p-4 flex items-center justify-between border-l-4 border-l-amber-500">
+            <div>
+                <span class="text-xs font-semibold text-amber-800 uppercase tracking-wider">Low Stock Warning</span>
+                <div class="text-2xl font-bold text-amber-800 font-heading mt-1">{{ low_stock_count }} <span class="text-xs font-normal text-slate-500">SKUs</span></div>
+                <div class="text-[11px] text-amber-700 mt-1">Order restock soon</div>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+            </div>
+        </div>
+
+        <div class="saas-card p-4 flex items-center justify-between border-l-4 border-l-rose-500">
+            <div>
+                <span class="text-xs font-semibold text-rose-800 uppercase tracking-wider">Out of Stock Alert</span>
+                <div class="text-2xl font-bold text-rose-800 font-heading mt-1">{{ out_of_stock_count }} <span class="text-xs font-normal text-slate-500">SKUs</span></div>
+                <div class="text-[11px] text-rose-700 mt-1">Zero units remaining</div>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                <i data-lucide="x-circle" class="w-5 h-5"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Restock Recommendations Section -->
+    {% if restock_recommendations %}
+    <div class="saas-card p-5 bg-gradient-to-br from-amber-50/70 to-white border-amber-200/80">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-slate-800 font-heading">AI Restock Recommendations</h3>
+                    <p class="text-xs text-slate-500">Smart reorder calculations based on minimum buffer stock and velocity</p>
+                </div>
+            </div>
+            <span class="text-xs font-semibold text-amber-800 bg-amber-100/80 px-2.5 py-1 rounded-full">
+                {{ restock_recommendations|length }} Items Require Restocking
+            </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {% for r in restock_recommendations %}
+            <div class="bg-white p-3.5 rounded-xl border border-amber-200/70 shadow-xs flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between text-[11px] mb-1">
+                        <span class="font-mono text-slate-400">{{ r.product_code }}</span>
+                        {% if r.quantity <= 0 %}
+                        <span class="badge-out-of-stock text-[10px] font-bold px-2 py-0.5 rounded-full">Out of Stock</span>
+                        {% else %}
+                        <span class="badge-low-stock text-[10px] font-bold px-2 py-0.5 rounded-full">{{ r.quantity }} {{ r.unit }} left</span>
+                        {% endif %}
+                    </div>
+                    <h4 class="text-xs font-bold text-slate-800 line-clamp-1" title="{{ r.name }}">{{ r.name }}</h4>
+                    <div class="text-[11px] text-slate-500 mt-1">
+                        Min Buffer: <span class="font-semibold text-slate-700">{{ r.min_stock }} {{ r.unit }}</span>
+                    </div>
+                </div>
+
+                <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <div>
+                        <div class="text-[10px] text-slate-400 uppercase font-semibold">Recommended</div>
+                        <div class="text-xs font-bold text-emerald-700">+{{ r.recommended_reorder }} {{ r.unit }} (~₹{{ "{:,.0f}".format(r.estimated_cost) }})</div>
+                    </div>
+                    <button type="button" onclick="openRestockModal({{ r.id }}, '{{ r.name|replace('\'', '\\\'') }}', {{ r.recommended_reorder }}, {{ r.purchase_price }}, '{{ r.unit }}')" 
+                            class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-colors">
+                        Restock Now
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 3. Stock Actions & Master Inventory Table -->
+    <div class="saas-card p-5 space-y-4">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+                <h3 class="text-sm font-bold text-slate-800 font-heading">Current Stock Ledger</h3>
+                <p class="text-xs text-slate-500">Live quantity on shelf with quick Stock-In arrival entry</p>
+            </div>
+            
+            <button type="button" onclick="openGeneralStockInModal()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition-colors flex items-center gap-1.5 shrink-0">
+                <i data-lucide="package-plus" class="w-4 h-4"></i>
+                <span>Record Stock-In Arrival</span>
+            </button>
+        </div>
+
+        <!-- Inventory List -->
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] tracking-wider font-semibold">
+                    <tr>
+                        <th class="py-3 px-4">SKU</th>
+                        <th class="py-3 px-4">Product Name</th>
+                        <th class="py-3 px-4">Category</th>
+                        <th class="py-3 px-4 text-center">Stock Level Status</th>
+                        <th class="py-3 px-4 text-right">Unit Purchase Cost</th>
+                        <th class="py-3 px-4 text-center">Available Qty</th>
+                        <th class="py-3 px-4 text-center">Min Threshold</th>
+                        <th class="py-3 px-4 text-right">Inventory Valuation</th>
+                        <th class="py-3 px-4 text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700">
+                    {% for p in products %}
+                    {% set stock_val = p.purchase_price * p.quantity %}
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="py-3 px-4 font-mono font-medium text-slate-900">{{ p.product_code }}</td>
+                        <td class="py-3 px-4 font-semibold text-slate-900">{{ p.name }}</td>
+                        <td class="py-3 px-4 text-slate-500">{{ p.category_name or 'General' }}</td>
+                        <td class="py-3 px-4 text-center">
+                            {% if p.quantity <= 0 %}
+                            <span class="badge-out-of-stock text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-rose-600"></span> Out of Stock
+                            </span>
+                            {% elif p.quantity <= p.min_stock %}
+                            <span class="badge-low-stock text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-600"></span> Low Stock
+                            </span>
+                            {% else %}
+                            <span class="badge-in-stock text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> Available
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4 text-right font-medium">₹{{ "{:,.2f}".format(p.purchase_price) }}</td>
+                        <td class="py-3 px-4 text-center font-bold text-slate-900">{{ p.quantity }} {{ p.unit }}</td>
+                        <td class="py-3 px-4 text-center text-slate-500">{{ p.min_stock }} {{ p.unit }}</td>
+                        <td class="py-3 px-4 text-right font-bold text-slate-900">₹{{ "{:,.2f}".format(stock_val) }}</td>
+                        <td class="py-3 px-4 text-center">
+                            <button type="button" onclick="openRestockModal({{ p.id }}, '{{ p.name|replace('\'', '\\\'') }}', 10, {{ p.purchase_price }}, '{{ p.unit }}')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 text-xs font-semibold transition-colors">
+                                + Stock In
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 4. Stock Movement History (Audit Log) -->
+    <div class="saas-card p-5 space-y-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="text-sm font-bold text-slate-800 font-heading">Stock Movement History</h3>
+                <p class="text-xs text-slate-500">Comprehensive audit log of arrivals, counter sales, and manual adjustments</p>
+            </div>
+            <span class="text-xs text-slate-400">Latest 25 movements</span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] tracking-wider font-semibold">
+                    <tr>
+                        <th class="py-2.5 px-4">Date &amp; Time</th>
+                        <th class="py-2.5 px-4">Product Name</th>
+                        <th class="py-2.5 px-4 text-center">Movement Type</th>
+                        <th class="py-2.5 px-4 text-center">Qty Changed</th>
+                        <th class="py-2.5 px-4 text-center">Prev Qty &rarr; New Qty</th>
+                        <th class="py-2.5 px-4">Reference / Notes</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700">
+                    {% for m in movements %}
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="py-2.5 px-4 text-slate-500 font-mono text-[11px]">{{ m.created_at }}</td>
+                        <td class="py-2.5 px-4 font-semibold text-slate-900">{{ m.product_name }}</td>
+                        <td class="py-2.5 px-4 text-center">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold {% if m.movement_type == 'Stock In' %}bg-emerald-50 text-emerald-700 border border-emerald-200{% elif m.movement_type == 'Sale Deduction' %}bg-blue-50 text-blue-700 border border-blue-200{% else %}bg-amber-50 text-amber-700 border border-amber-200{% endif %}">
+                                {{ m.movement_type }}
+                            </span>
+                        </td>
+                        <td class="py-2.5 px-4 text-center font-bold {% if m.movement_type == 'Stock In' %}text-emerald-700{% elif m.movement_type == 'Sale Deduction' %}text-slate-700{% else %}text-amber-700{% endif %}">
+                            {% if m.movement_type == 'Stock In' %}+{% elif m.movement_type == 'Sale Deduction' %}-{% endif %}{{ m.quantity }}
+                        </td>
+                        <td class="py-2.5 px-4 text-center font-mono text-[11px] text-slate-600">
+                            {{ m.previous_qty }} &rarr; <span class="font-bold text-slate-900">{{ m.new_qty }}</span>
+                        </td>
+                        <td class="py-2.5 px-4 text-slate-500 text-[11px]">
+                            {% if m.reference_id %}<span class="font-mono text-slate-700 font-medium mr-1">{{ m.reference_id }}</span>{% endif %}
+                            <span>{{ m.notes or '--' }}</span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="py-6 text-center text-slate-400">No stock movements recorded yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- General / Restock Stock-In Modal -->
+<div id="restock-modal" data-modal class="fixed inset-0 modal-backdrop-custom z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">
+        <div class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+            <h3 class="text-sm font-bold flex items-center gap-2">
+                <i data-lucide="package-plus" class="w-4 h-4 text-emerald-400"></i>
+                Stock-In Inventory Entry
+            </h3>
+            <button onclick="closeModal('restock-modal')" class="text-slate-400 hover:text-white p-1">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+
+        <form method="POST" action="{{ url_for('stock_in') }}" class="p-5 space-y-3.5">
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Select Product *</label>
+                <select id="modal-product-select" name="product_id" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                    {% for p in products %}
+                    <option value="{{ p.id }}">{{ p.product_code }} - {{ p.name }} (Current: {{ p.quantity }} {{ p.unit }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Quantity Received *</label>
+                    <input type="number" step="0.5" min="0.5" id="modal-stockin-qty" name="quantity" required placeholder="e.g. 20" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">New Purchase Cost (₹)</label>
+                    <input type="number" step="0.01" min="0" id="modal-stockin-cost" name="new_cost" placeholder="Optional" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Supplier / Mandi Invoice Reference</label>
+                <input type="text" name="notes" placeholder="e.g. Kalupur Mandi Bill #902, Fortune distributor" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button type="button" onclick="closeModal('restock-modal')" class="py-2 px-3 text-xs rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100">Cancel</button>
+                <button type="submit" class="py-2 px-4 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs">Update Stock In</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openGeneralStockInModal() {
+        document.getElementById('modal-stockin-qty').value = '';
+        document.getElementById('modal-stockin-cost').value = '';
+        openModal('restock-modal');
+    }
+
+    function openRestockModal(productId, productName, suggestedQty, currentCost, unit) {
+        const select = document.getElementById('modal-product-select');
+        if (select) {
+            select.value = productId;
+        }
+        document.getElementById('modal-stockin-qty').value = suggestedQty;
+        document.getElementById('modal-stockin-cost').value = currentCost;
+        openModal('restock-modal');
+    }
+</script>
+{% endblock %}

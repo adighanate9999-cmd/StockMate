@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+
+{% block title %}Fast Billing POS - Smart Stock{% endblock %}
+{% block header_title %}Fast Counter POS Billing{% endblock %}
+
+{% block content %}
+<div class="h-[calc(100vh-8.5rem)] flex flex-col lg:flex-row gap-5 -mt-2">
+
+    <!-- LEFT COLUMN: Product Catalog (60-65% width) -->
+    <div class="flex-1 flex flex-col min-w-0 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 overflow-hidden">
+        
+        <!-- Search and Category Filters -->
+        <div class="space-y-3 pb-3 border-b border-slate-100 shrink-0">
+            <!-- Search bar -->
+            <div class="relative">
+                <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3"></i>
+                <input type="text" id="pos-search-input" placeholder="Search product name or SKU code (e.g. Rice, PRD-101)..." 
+                       class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all">
+            </div>
+
+            <!-- Category Pills Scrollable Row -->
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+                <button type="button" class="pos-cat-pill px-3 py-1.5 rounded-lg bg-navy-900 text-white font-medium shrink-0 transition-colors" data-category="all">
+                    All Categories
+                </button>
+                {% for cat in categories %}
+                <button type="button" class="pos-cat-pill px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 font-medium shrink-0 transition-colors" data-category="{{ cat.name }}">
+                    {{ cat.name }}
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Products Grid Scrollable Container -->
+        <div class="flex-1 overflow-y-auto pt-3 pr-1">
+            <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                {% for p in products %}
+                <div id="product-card-{{ p.id }}" 
+                     class="pos-product-item pos-product-card bg-slate-50/70 hover:bg-white p-3 rounded-xl border border-slate-200/80 flex flex-col justify-between"
+                     data-id="{{ p.id }}"
+                     data-code="{{ p.product_code }}"
+                     data-name="{{ p.name }}"
+                     data-category="{{ p.category_name }}"
+                     data-stock="{{ p.quantity }}"
+                     data-min-stock="{{ p.min_stock }}"
+                     onclick="addToCart({{ p.id }}, '{{ p.product_code }}', '{{ p.name|replace('\'', '\\\'') }}', {{ p.selling_price }}, {{ p.purchase_price }}, '{{ p.unit }}', {{ p.quantity }})">
+                    
+                    <div>
+                        <div class="flex items-center justify-between text-[11px] mb-1">
+                            <span class="font-mono text-slate-400">{{ p.product_code }}</span>
+                            <span id="stock-badge-{{ p.id }}" class="text-[10px] font-semibold px-2 py-0.5 rounded-full {% if p.quantity <= 0 %}badge-out-of-stock{% elif p.quantity <= p.min_stock %}badge-low-stock{% else %}badge-in-stock{% endif %}">
+                                {% if p.quantity <= 0 %}Out of Stock{% elif p.quantity <= p.min_stock %}{{ p.quantity }} left{% else %}{{ p.quantity }} in stock{% endif %}
+                            </span>
+                        </div>
+                        <h4 class="text-xs font-semibold text-slate-800 line-clamp-2 leading-snug">{{ p.name }}</h4>
+                    </div>
+
+                    <div class="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between">
+                        <span class="text-xs text-slate-500">₹{{ "{:,.2f}".format(p.selling_price) }} / {{ p.unit }}</span>
+                        <div class="w-6 h-6 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
+                            +
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: Live Bill / Cart & Checkout (35-40% width) -->
+    <div class="w-full lg:w-[420px] shrink-0 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 flex flex-col justify-between">
+        
+        <div>
+            <!-- Header & Customer Selection -->
+            <div class="pb-3 border-b border-slate-100">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-sm font-bold text-slate-800 font-heading">Current Order Bill</h3>
+                        <span id="pos-cart-badge-count" class="w-5 h-5 rounded-full bg-emerald-600 text-white text-[11px] font-bold flex items-center justify-center">0</span>
+                    </div>
+                    <button type="button" onclick="clearCart()" class="text-xs text-rose-600 hover:text-rose-700 font-medium">
+                        Clear Bill
+                    </button>
+                </div>
+
+                <!-- Customer Selector -->
+                <div class="flex items-center gap-1.5">
+                    <div class="relative flex-1">
+                        <select id="pos-customer-select" class="w-full py-1.5 pl-2.5 pr-6 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                            <option value="walk-in">Walk-in Customer (General)</option>
+                            {% for c in customers %}
+                            <option value="{{ c.id }}">{{ c.name }} ({{ c.phone }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="button" onclick="openModal('quick-customer-modal')" class="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold shrink-0" title="Add New Customer">
+                        + New
+                    </button>
+                </div>
+            </div>
+
+            <!-- Cart Items Container (Scrollable) -->
+            <div class="h-56 overflow-y-auto py-2 space-y-2" id="pos-cart-items-wrapper">
+                <div id="pos-cart-empty" class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
+                    <i data-lucide="shopping-cart" class="w-10 h-10 mb-2 stroke-1 text-slate-300"></i>
+                    <p class="text-xs font-medium">Cart is empty</p>
+                    <p class="text-[11px] text-slate-400 mt-0.5">Click any product on the left catalog to add to bill</p>
+                </div>
+                <div id="pos-cart-items" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <!-- Checkout & Calculation Footer -->
+        <div class="pt-3 border-t border-slate-200/80 space-y-3">
+            
+            <!-- Calculations Breakdown -->
+            <div class="space-y-1.5 text-xs">
+                <div class="flex items-center justify-between text-slate-600">
+                    <span>Subtotal:</span>
+                    <span id="pos-cart-subtotal" class="font-semibold text-slate-800">₹0.00</span>
+                </div>
+
+                <!-- Discount Row -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-1">
+                        <span class="text-slate-600">Discount:</span>
+                        <div class="inline-flex rounded border border-slate-200 overflow-hidden text-[11px]">
+                            <button type="button" id="pos-discount-type-btn" class="px-1.5 py-0.5 bg-slate-100 text-slate-700 font-bold hover:bg-slate-200">₹</button>
+                        </div>
+                        <input type="number" id="pos-discount-input" min="0" placeholder="0" class="w-16 px-1.5 py-0.5 text-xs border border-slate-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                    </div>
+                    <span id="pos-cart-discount-amount" class="text-emerald-700 font-semibold">-₹0.00</span>
+                </div>
+
+                <!-- Grand Total -->
+                <div class="flex items-center justify-between pt-1.5 border-t border-slate-100">
+                    <span class="text-sm font-bold text-slate-900">Grand Total:</span>
+                    <span id="pos-cart-total" class="text-xl font-extrabold text-emerald-800 font-heading">₹0.00</span>
+                </div>
+            </div>
+
+            <!-- Payment Method Selector -->
+            <div>
+                <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Payment Method</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button type="button" data-method="Cash" class="payment-method-btn flex flex-col items-center justify-center p-2 rounded-xl border-2 border-emerald-600 bg-emerald-50 text-emerald-800 font-bold text-xs transition-all shadow-xs">
+                        <i data-lucide="banknote" class="w-4 h-4 mb-1"></i>
+                        <span>Cash</span>
+                    </button>
+                    <button type="button" data-method="UPI" class="payment-method-btn flex flex-col items-center justify-center p-2 rounded-xl border-2 border-slate-200 bg-white text-slate-700 font-bold text-xs hover:border-slate-300 transition-all">
+                        <i data-lucide="qr-code" class="w-4 h-4 mb-1"></i>
+                        <span>UPI / QR</span>
+                    </button>
+                    <button type="button" data-method="Credit" class="payment-method-btn flex flex-col items-center justify-center p-2 rounded-xl border-2 border-slate-200 bg-white text-slate-700 font-bold text-xs hover:border-slate-300 transition-all">
+                        <i data-lucide="book" class="w-4 h-4 mb-1"></i>
+                        <span>Khata (Udhar)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dynamic UPI QR Box (Hidden by default, shown when UPI is selected) -->
+            <div id="pos-upi-qr-box" class="hidden p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl text-center">
+                <div class="text-xs font-bold text-emerald-900 mb-1">Scan &amp; Pay via GPay / PhonePe / Paytm</div>
+                <div class="inline-block p-1.5 bg-white rounded-lg shadow-xs border border-emerald-100">
+                    <img id="pos-dynamic-upi-qr" src="" alt="UPI QR Code" class="w-28 h-28 mx-auto">
+                </div>
+                <div class="text-[11px] text-emerald-700 mt-1 font-medium">Instant auto-reconciliation</div>
+            </div>
+
+            <!-- Complete Sale CTA Button -->
+            <button type="button" id="pos-checkout-btn" onclick="completeSale()" disabled
+                    class="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm shadow-md transition-colors flex items-center justify-center gap-2">
+                <i data-lucide="printer" class="w-5 h-5"></i>
+                <span>Complete Sale &amp; Print Bill</span>
+            </button>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Printable Thermal Invoice Receipt Modal -->
+<div id="receipt-modal" data-modal class="fixed inset-0 modal-backdrop-custom z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+        <!-- Modal Top Bar -->
+        <div class="px-4 py-3 bg-slate-900 text-white flex items-center justify-between no-print">
+            <span class="text-xs font-bold flex items-center gap-2">
+                <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+                Bill Generated Successfully
+            </span>
+            <button onclick="closeModal('receipt-modal')" class="text-slate-400 hover:text-white p-1">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+
+        <!-- Receipt Print Body -->
+        <div id="printable-receipt" class="p-6 overflow-y-auto text-slate-800 font-mono text-xs">
+            <div class="text-center pb-3 border-b border-dashed border-slate-300">
+                <h2 class="text-base font-bold uppercase tracking-wider text-slate-900">{{ session.get('shop_name', 'Smart Kirana & General Store') }}</h2>
+                <p class="text-[11px] text-slate-500">{{ session.get('shop_tagline', 'Manage Your Stock. Track Your Money. Grow Your Business.') }}</p>
+                <p class="text-[10px] text-slate-500 mt-1">{{ session.get('address', 'Market Road, Sector 4, Gandhinagar') }}</p>
+                <p class="text-[10px] text-slate-500">Phone: {{ session.get('phone', '+91 98765 43210') }} | GSTIN: {{ session.get('gstin', '24AAACP1234M1Z5') }}</p>
+            </div>
+
+            <div class="py-2.5 border-b border-dashed border-slate-300 space-y-1 text-[11px]">
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Invoice:</span>
+                    <span id="receipt-inv-no" class="font-bold text-slate-900">INV-0000</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Date &amp; Time:</span>
+                    <span id="receipt-date">--</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Customer:</span>
+                    <span id="receipt-customer" class="font-semibold text-slate-800">Walk-in</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Payment Mode:</span>
+                    <span id="receipt-payment-method" class="font-bold text-emerald-700">CASH</span>
+                </div>
+            </div>
+
+            <!-- Items -->
+            <div class="py-2.5 border-b border-dashed border-slate-300">
+                <table class="w-full">
+                    <thead>
+                        <tr class="text-[10px] text-slate-400 uppercase border-b border-slate-200">
+                            <th class="text-left pb-1 font-semibold">Item</th>
+                            <th class="text-center pb-1 font-semibold">Qty</th>
+                            <th class="text-right pb-1 font-semibold">Rate</th>
+                            <th class="text-right pb-1 font-semibold">Amt</th>
+                        </tr>
+                    </thead>
+                    <tbody id="receipt-items-tbody"></tbody>
+                </table>
+            </div>
+
+            <!-- Totals -->
+            <div class="py-2.5 border-b border-dashed border-slate-300 space-y-1 text-xs">
+                <div class="flex justify-between text-slate-600">
+                    <span>Subtotal:</span>
+                    <span id="receipt-subtotal">₹0.00</span>
+                </div>
+                <div class="flex justify-between text-slate-600">
+                    <span>Discount:</span>
+                    <span id="receipt-discount">-₹0.00</span>
+                </div>
+                <div class="flex justify-between text-sm font-bold text-slate-900 pt-1 border-t border-slate-200">
+                    <span>NET PAYABLE:</span>
+                    <span id="receipt-grand-total" class="text-base text-emerald-700">₹0.00</span>
+                </div>
+            </div>
+
+            <!-- Barcode & Thank You Footer -->
+            <div class="pt-4 text-center space-y-2">
+                <div class="text-[10px] text-slate-400 tracking-widest font-mono">||| ||||| |||| |||||| ||||| ||||</div>
+                <div class="text-xs font-bold text-slate-700">Thank You! Visit Again 🙏</div>
+                <div class="text-[9px] text-slate-400">Powered by Smart Stock &amp; Money Manager</div>
+            </div>
+        </div>
+
+        <!-- Modal Bottom Actions -->
+        <div class="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2 no-print">
+            <button onclick="closeModal('receipt-modal')" class="flex-1 py-2 px-3 rounded-xl border border-slate-300 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-100">
+                Next Sale (Done)
+            </button>
+            <button onclick="printReceipt()" class="flex-1 py-2 px-3 rounded-xl bg-navy-900 hover:bg-navy-800 text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm">
+                <i data-lucide="printer" class="w-4 h-4"></i>
+                <span>Print Bill</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Add Customer Modal -->
+<div id="quick-customer-modal" data-modal class="fixed inset-0 modal-backdrop-custom z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">
+        <div class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+            <h3 class="text-sm font-bold flex items-center gap-2">
+                <i data-lucide="user-plus" class="w-4 h-4 text-emerald-400"></i>
+                Add New Khata Customer
+            </h3>
+            <button onclick="closeModal('quick-customer-modal')" class="text-slate-400 hover:text-white p-1">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+
+        <form onsubmit="quickAddCustomer(event)" class="p-5 space-y-3">
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Customer Name *</label>
+                <input type="text" name="name" required placeholder="e.g. Anand Joshi" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Mobile / WhatsApp Number *</label>
+                <input type="text" name="phone" required placeholder="e.g. +91 98250 00000" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Address / Note</label>
+                <input type="text" name="address" placeholder="e.g. Flat 301, Shivam Apts" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Credit Limit (₹)</label>
+                <input type="number" name="credit_limit" value="5000" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+            </div>
+
+            <div class="pt-2 flex items-center justify-end gap-2">
+                <button type="button" onclick="closeModal('quick-customer-modal')" class="py-2 px-3 text-xs rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100">Cancel</button>
+                <button type="submit" class="py-2 px-4 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs">Save &amp; Select</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/pos.js') }}"></script>
+{% endblock %}

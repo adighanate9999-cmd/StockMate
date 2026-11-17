@@ -1,0 +1,404 @@
+{% extends "base.html" %}
+
+{% block title %}Customer Khata (Credit) - Smart Stock{% endblock %}
+{% block header_title %}Customer Khata &amp; Credit Management{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- 1. Top Khata / Udhar Recovery KPI Cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div class="saas-card p-4 border-l-4 border-l-rose-500 col-span-2 sm:col-span-1">
+            <span class="text-xs font-semibold text-rose-800 uppercase tracking-wider">Total Pending Credit</span>
+            <div class="text-2xl font-extrabold text-rose-800 font-heading mt-1">₹{{ "{:,.2f}".format(total_pending_credit) }}</div>
+            <div class="text-[11px] text-rose-700 mt-1">Money owed to shop</div>
+        </div>
+        <div class="saas-card p-4">
+            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Customers</span>
+            <div class="text-xl font-bold text-slate-900 font-heading mt-1">{{ customers|length }} <span class="text-xs font-normal text-slate-500">accounts</span></div>
+            <div class="text-[11px] text-slate-500 mt-1">{{ active_credit_customers_count }} with pending balance</div>
+        </div>
+        <div class="saas-card p-4">
+            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Credit Given</span>
+            <div class="text-xl font-bold text-slate-900 font-heading mt-1">₹{{ "{:,.2f}".format(total_credit_given) }}</div>
+            <div class="text-[11px] text-slate-500 mt-1">Cumulative credit sales</div>
+        </div>
+        <div class="saas-card p-4 border-l-4 border-l-emerald-500">
+            <span class="text-xs font-semibold text-emerald-800 uppercase tracking-wider">Total Credit Repaid</span>
+            <div class="text-xl font-bold text-emerald-800 font-heading mt-1">₹{{ "{:,.2f}".format(total_credit_repaid) }}</div>
+            <div class="text-[11px] text-emerald-700 mt-1">Successfully collected</div>
+        </div>
+        <div class="saas-card p-4">
+            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Recovery Rate</span>
+            {% set recovery_rate = ((total_credit_repaid / total_credit_given) * 100) if total_credit_given > 0 else 100 %}
+            <div class="text-xl font-bold text-emerald-700 font-heading mt-1">{{ "{:.1f}%".format(recovery_rate) }}</div>
+            <div class="text-[11px] text-slate-500 mt-1">Healthy collection cycle</div>
+        </div>
+    </div>
+
+    <!-- 2. Search, Filter & Action Toolbar -->
+    <div class="saas-card p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div class="flex-1 flex flex-col sm:flex-row items-center gap-2">
+            <!-- Search -->
+            <div class="relative w-full sm:w-72">
+                <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+                <input type="text" id="khata-search-input" placeholder="Search by customer name or phone..." 
+                       class="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-slate-50 focus:bg-white">
+            </div>
+
+            <!-- Filter Status -->
+            <select id="khata-status-filter" class="w-full sm:w-auto py-1.5 px-3 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white text-slate-700">
+                <option value="all">All Customers</option>
+                <option value="pending">With Pending Credit (Udhar)</option>
+                <option value="cleared">Fully Cleared (₹0 Balance)</option>
+            </select>
+        </div>
+
+        <button type="button" onclick="openModal('add-customer-modal')" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition-colors flex items-center justify-center gap-1.5 shrink-0">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+            <span>Add New Customer</span>
+        </button>
+    </div>
+
+    <!-- 3. Customers Directory Table -->
+    <div class="saas-card overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs" id="customers-table">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] tracking-wider font-semibold">
+                    <tr>
+                        <th class="py-3 px-4">Customer Details</th>
+                        <th class="py-3 px-4">Contact &amp; Location</th>
+                        <th class="py-3 px-4 text-right">Total Purchases on Credit</th>
+                        <th class="py-3 px-4 text-right">Total Amount Paid</th>
+                        <th class="py-3 px-4 text-right">Remaining Balance (Udhar)</th>
+                        <th class="py-3 px-4 text-center">Credit Limit</th>
+                        <th class="py-3 px-4 text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700">
+                    {% for c in customers %}
+                    <tr class="customer-row hover:bg-slate-50/80 transition-colors" data-name="{{ c.name|lower }}" data-phone="{{ c.phone }}" data-balance="{{ c.balance }}">
+                        <td class="py-3 px-4">
+                            <div class="font-bold text-slate-900 text-sm flex items-center gap-2">
+                                <span>{{ c.name }}</span>
+                                {% if c.balance > 0 %}
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                    Pending
+                                </span>
+                                {% else %}
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                    Clear
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div class="text-[11px] text-slate-400 mt-0.5">{{ c.notes or 'Regular neighborhood customer' }}</div>
+                        </td>
+                        <td class="py-3 px-4">
+                            <div class="font-medium text-slate-800 flex items-center gap-1">
+                                <i data-lucide="phone" class="w-3.5 h-3.5 text-slate-400"></i>
+                                <span>{{ c.phone }}</span>
+                            </div>
+                            <div class="text-[11px] text-slate-400 mt-0.5 truncate max-w-[180px]" title="{{ c.address }}">{{ c.address or 'Local' }}</div>
+                        </td>
+                        <td class="py-3 px-4 text-right font-medium text-slate-800">
+                            ₹{{ "{:,.2f}".format(c.total_credit) }}
+                        </td>
+                        <td class="py-3 px-4 text-right font-semibold text-emerald-700">
+                            ₹{{ "{:,.2f}".format(c.total_paid) }}
+                        </td>
+                        <td class="py-3 px-4 text-right">
+                            <span class="text-sm font-extrabold {% if c.balance > 0 %}text-rose-700{% else %}text-emerald-700{% endif %}">
+                                ₹{{ "{:,.2f}".format(c.balance) }}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <span class="text-slate-600 font-medium">₹{{ "{:,.0f}".format(c.credit_limit) }}</span>
+                            {% set pct = (c.balance / c.credit_limit * 100) if c.credit_limit > 0 else 0 %}
+                            <div class="w-20 mx-auto bg-slate-200 h-1.5 rounded-full mt-1 overflow-hidden">
+                                <div class="h-full {% if pct > 80 %}bg-rose-500{% elif pct > 50 %}bg-amber-500{% else %}bg-emerald-500{% endif %}" style="width: {{ [pct, 100]|min }}%"></div>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <div class="flex items-center justify-center gap-1.5">
+                                <!-- Record Repayment -->
+                                <button type="button" onclick="openPaymentModal({{ c.id }}, '{{ c.name|replace('\'', '\\\'') }}', {{ c.balance }})" 
+                                        class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold transition-colors shadow-xs" title="Record Credit Payment">
+                                    + Repay
+                                </button>
+                                
+                                <!-- WhatsApp Reminder -->
+                                {% if c.balance > 0 %}
+                                <button type="button" onclick="sendWhatsAppReminder('{{ c.phone }}', '{{ c.name|replace('\'', '\\\'') }}', {{ c.balance }}, '{{ session.get('shop_name', 'Smart Kirana Store') }}')"
+                                        class="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors" title="Send WhatsApp Payment Reminder">
+                                    <i data-lucide="message-circle" class="w-4 h-4"></i>
+                                </button>
+                                {% endif %}
+
+                                <!-- View Ledger History -->
+                                <button type="button" onclick="viewCustomerLedger({{ c.id }}, '{{ c.name|replace('\'', '\\\'') }}')"
+                                        class="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors" title="View Transaction Ledger">
+                                    <i data-lucide="book-open" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="py-8 text-center text-slate-400">No customers registered yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal: Record Customer Payment (Credit Repayment) -->
+<div id="payment-modal" data-modal class="fixed inset-0 modal-backdrop-custom z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">
+        <div class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+            <h3 class="text-sm font-bold flex items-center gap-2">
+                <i data-lucide="badge-indian-rupee" class="w-4 h-4 text-emerald-400"></i>
+                Record Customer Repayment
+            </h3>
+            <button onclick="closeModal('payment-modal')" class="text-slate-400 hover:text-white p-1">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+
+        <form method="POST" action="{{ url_for('customer_repay') }}" class="p-5 space-y-3.5">
+            <input type="hidden" id="repay-customer-id" name="customer_id">
+            
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                <div>
+                    <span class="text-[11px] text-slate-500 uppercase font-bold">Customer</span>
+                    <div id="repay-customer-name" class="font-bold text-sm text-slate-900">--</div>
+                </div>
+                <div class="text-right">
+                    <span class="text-[11px] text-slate-500 uppercase font-bold">Current Balance</span>
+                    <div id="repay-customer-balance" class="font-extrabold text-sm text-rose-700">₹0.00</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Repayment Amount (₹) *</label>
+                    <input type="number" step="0.5" min="1" id="repay-amount" name="amount" required placeholder="0.00" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none font-bold text-emerald-700">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Payment Mode *</label>
+                    <select name="payment_method" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none font-medium">
+                        <option value="Cash">Cash (Adds to Drawer)</option>
+                        <option value="UPI">UPI / GPay / QR</option>
+                        <option value="Bank">Bank Account</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Payment Date *</label>
+                <input type="date" name="payment_date" required value="{{ today_str }}" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Receipt Ref / Transaction ID</label>
+                <input type="text" name="reference_no" placeholder="e.g. CASH-RCPT-102 or UPI Ref 884729" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Notes</label>
+                <input type="text" name="notes" placeholder="e.g. Weekly settlement clearance" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button type="button" onclick="closeModal('payment-modal')" class="py-2 px-3 text-xs rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100">Cancel</button>
+                <button type="submit" class="py-2 px-4 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs">Record Repayment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Add New Customer -->
+<div id="add-customer-modal" data-modal class="fixed inset-0 modal-backdrop-custom z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">
+        <div class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+            <h3 class="text-sm font-bold flex items-center gap-2">
+                <i data-lucide="user-plus" class="w-4 h-4 text-emerald-400"></i>
+                Create Customer Khata Profile
+            </h3>
+            <button onclick="closeModal('add-customer-modal')" class="text-slate-400 hover:text-white p-1">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+
+        <form method="POST" action="{{ url_for('add_customer') }}" class="p-5 space-y-3.5">
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Customer Full Name *</label>
+                <input type="text" name="name" required placeholder="e.g. Sanjay Dave" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Mobile / WhatsApp *</label>
+                    <input type="text" name="phone" required placeholder="e.g. +91 98250 12345" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Credit Limit (₹)</label>
+                    <input type="number" name="credit_limit" value="5000" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none font-bold">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Address / Society</label>
+                <input type="text" name="address" placeholder="e.g. B-204, Radhe Complex, Sector 4" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Notes / Relationship</label>
+                <input type="text" name="notes" placeholder="e.g. Building neighbor, pays on 1st of every month" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button type="button" onclick="closeModal('add-customer-modal')" class="py-2 px-3 text-xs rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100">Cancel</button>
+                <button type="submit" class="py-2 px-4 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs">Save Customer</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Customer Ledger Statement -->
+<div id="customer-ledger-modal" data-modal class="fixed inset-0 modal-backdrop-custom z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]">
+        <div class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+            <div>
+                <h3 class="text-sm font-bold flex items-center gap-2">
+                    <i data-lucide="book-open" class="w-4 h-4 text-emerald-400"></i>
+                    Customer Account Statement: <span id="ledger-cust-name" class="text-emerald-300">--</span>
+                </h3>
+            </div>
+            <button onclick="closeModal('customer-ledger-modal')" class="text-slate-400 hover:text-white p-1">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+
+        <div class="p-5 overflow-y-auto space-y-4">
+            <!-- Balance Banner -->
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+                <div>
+                    <span class="text-slate-500 uppercase font-semibold">Total Credit Purchases:</span>
+                    <div id="ledger-total-credit" class="font-bold text-slate-800">₹0.00</div>
+                </div>
+                <div>
+                    <span class="text-slate-500 uppercase font-semibold">Total Paid:</span>
+                    <div id="ledger-total-paid" class="font-bold text-emerald-700">₹0.00</div>
+                </div>
+                <div class="text-right">
+                    <span class="text-slate-500 uppercase font-semibold">Current Balance Due:</span>
+                    <div id="ledger-net-balance" class="font-extrabold text-sm text-rose-700">₹0.00</div>
+                </div>
+            </div>
+
+            <!-- Statement Table -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="text-[10px] text-slate-400 uppercase border-b border-slate-200">
+                            <th class="pb-2">Date</th>
+                            <th class="pb-2">Transaction</th>
+                            <th class="pb-2 text-center">Type</th>
+                            <th class="pb-2 text-right">Debit (Credit Sale)</th>
+                            <th class="pb-2 text-right">Credit (Payment)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ledger-statement-tbody" class="divide-y divide-slate-100 text-slate-700"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="p-3 bg-slate-50 border-t border-slate-200 flex justify-end shrink-0">
+            <button type="button" onclick="closeModal('customer-ledger-modal')" class="py-2 px-4 text-xs font-semibold rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100">Close Statement</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const searchInput = document.getElementById('khata-search-input');
+        const statusFilter = document.getElementById('khata-status-filter');
+        const rows = document.querySelectorAll('.customer-row');
+
+        function filterCustomers() {
+            const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            const status = statusFilter ? statusFilter.value : 'all';
+
+            rows.forEach(r => {
+                const name = r.dataset.name;
+                const phone = r.dataset.phone;
+                const bal = parseFloat(r.dataset.balance) || 0;
+
+                const matchesQuery = name.includes(query) || phone.includes(query);
+                let matchesStatus = true;
+                if (status === 'pending') matchesStatus = (bal > 0);
+                if (status === 'cleared') matchesStatus = (bal <= 0);
+
+                if (matchesQuery && matchesStatus) {
+                    r.style.display = '';
+                } else {
+                    r.style.display = 'none';
+                }
+            });
+        }
+
+        if (searchInput) searchInput.addEventListener('input', filterCustomers);
+        if (statusFilter) statusFilter.addEventListener('change', filterCustomers);
+    });
+
+    function openPaymentModal(customerId, customerName, currentBalance) {
+        document.getElementById('repay-customer-id').value = customerId;
+        document.getElementById('repay-customer-name').textContent = customerName;
+        document.getElementById('repay-customer-balance').textContent = `₹${currentBalance.toFixed(2)}`;
+        document.getElementById('repay-amount').value = currentBalance > 0 ? currentBalance : '';
+        openModal('payment-modal');
+    }
+
+    async function viewCustomerLedger(customerId, customerName) {
+        try {
+            const res = await fetch(`/api/customers/${customerId}/ledger`);
+            const data = await res.json();
+            if (data) {
+                document.getElementById('ledger-cust-name').textContent = customerName;
+                document.getElementById('ledger-total-credit').textContent = `₹${data.total_credit.toFixed(2)}`;
+                document.getElementById('ledger-total-paid').textContent = `₹${data.total_paid.toFixed(2)}`;
+                document.getElementById('ledger-net-balance').textContent = `₹${data.balance.toFixed(2)}`;
+
+                let rowsHtml = '';
+                data.history.forEach(tx => {
+                    rowsHtml += `
+                    <tr>
+                        <td class="py-2 text-[11px] font-mono text-slate-500">${tx.date_str}</td>
+                        <td class="py-2 font-medium text-slate-800">${tx.description}</td>
+                        <td class="py-2 text-center">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${tx.type === 'DEBIT' ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-800'}">
+                                ${tx.type === 'DEBIT' ? 'CREDIT BILL' : 'REPAYMENT'}
+                            </span>
+                        </td>
+                        <td class="py-2 text-right font-semibold text-slate-900">${tx.type === 'DEBIT' ? '₹' + tx.amount.toFixed(2) : '--'}</td>
+                        <td class="py-2 text-right font-bold text-emerald-700">${tx.type === 'CREDIT' ? '₹' + tx.amount.toFixed(2) : '--'}</td>
+                    </tr>
+                    `;
+                });
+                document.getElementById('ledger-statement-tbody').innerHTML = rowsHtml;
+
+                openModal('customer-ledger-modal');
+            }
+        } catch (e) {
+            console.error(e);
+            showToast('error', 'Failed to load customer statement', 'Error');
+        }
+    }
+</script>
+{% endblock %}
