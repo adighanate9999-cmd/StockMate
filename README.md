@@ -78,12 +78,31 @@ cd d:\stockmate
 .\venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-### 3. Seed Realistic Sample Data (Preloads 26 Indian Kirana Products & 14 Days History)
+### 3. Connect to Supabase Cloud Database (Optional / Recommended)
+
+1. **Configure Environment Variables (`.env`):**
+   Copy `.env.example` to `.env` (or edit existing `.env`):
+   ```env
+   SUPABASE_URL=https://your-project-id.supabase.co
+   SUPABASE_KEY=your-supabase-anon-or-service-role-key
+   ```
+2. **Execute Schema in Supabase SQL Editor:**
+   Open [supabase.com](https://supabase.com) -> Your Project -> **SQL Editor**, paste the contents of [`supabase_schema.sql`](file:///d:/stockmate/supabase_schema.sql), and click **Run**.
+3. **Verify Connection & Migrate Data via CLI:**
+   ```bash
+   # Test Supabase connection
+   .\venv\Scripts\python.exe backend.py test
+
+   # (Optional) Migrate local SQLite records to Supabase
+   .\venv\Scripts\python.exe backend.py migrate
+   ```
+
+### 4. Seed Realistic Sample Data (Local SQLite Fallback)
 ```bash
 .\venv\Scripts\python.exe seed_data.py
 ```
 
-### 4. Run Flask Server
+### 5. Run Web Server
 ```bash
 .\venv\Scripts\python.exe app.py
 ```

@@ -177,6 +177,14 @@ def run_tests():
     }, follow_redirects=True)
     assert_test("Settings update succeeds", res.status_code == 200 and b'Store profile settings updated successfully' in res.data)
 
+    # 23. Supabase API Status & Backend Integration
+    res = client.get('/api/supabase/status')
+    assert_test("Supabase API status endpoint returns 200 JSON", res.status_code == 200 and 'url' in res.get_json())
+
+    # 24. Settings page renders Supabase cloud card
+    res = client.get('/settings')
+    assert_test("Settings page displays Supabase Cloud Database card", res.status_code == 200 and b'Supabase Cloud Database' in res.data)
+
     print("=" * 60)
     print(f"ALL {passed}/{total} TESTS PASSED SUCCESSFULLY! 100% COVERAGE")
     print("=" * 60)

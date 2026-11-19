@@ -2,6 +2,10 @@ import sqlite3
 import os
 from datetime import datetime
 from werkzeug.security import generate_password_hash
+import backend
+
+# Ensure .env variables are loaded
+backend.load_env()
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'smart_stock.db')
 

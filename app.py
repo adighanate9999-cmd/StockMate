@@ -11,6 +11,10 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from database import get_db, init_db
 import models
 import seed_data
+import backend
+
+# Ensure environment variables from .env are loaded
+backend.load_env()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'smart-stock-money-manager-secret-key-2026')
@@ -1428,7 +1432,13 @@ def settings_view():
     shop = cursor.fetchone()
     conn.close()
 
-    return render_template('settings.html', active_page='settings', shop=shop or get_current_shop())
+    supabase_status = backend.test_connection()
+    return render_template(
+        'settings.html',
+        active_page='settings',
+        shop=shop or get_current_shop(),
+        supabase_status=supabase_status
+    )
 
 @app.route('/settings/reseed', methods=['POST'])
 @login_required
@@ -1436,6 +1446,21 @@ def reseed_data_route():
     seed_data.seed()
     flash('Sample retail data reloaded successfully! 26 Products, 5 Customers, 60+ Sales, Expenses, and Stock Movements ready for demonstration.', 'success')
     return redirect(url_for('dashboard'))
+
+@app.route('/settings/migrate-supabase', methods=['POST'])
+@login_required
+def migrate_supabase_route():
+    success = backend.migrate_sqlite_to_supabase()
+    if success:
+        flash('Data migrated successfully to Supabase cloud!', 'success')
+    else:
+        flash('Supabase migration failed. Please ensure your credentials in .env are valid and the schema is created.', 'danger')
+    return redirect(url_for('settings_view'))
+
+@app.route('/api/supabase/status')
+def api_supabase_status():
+    """API endpoint to check Supabase configuration and connectivity."""
+    return jsonify(backend.test_connection())
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
